@@ -46,7 +46,7 @@ public enum PortMatcher: Codable, Sendable {
     }
 }
 
-public enum AlertPriority: Sendable {
+public enum AlertPriority: Sendable, Equatable {
     case high
     case medium
     case info
