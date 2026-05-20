@@ -37,13 +37,25 @@ public struct SettingsView: View {
                 HStack {
                     Spacer()
                     Button("Quit Port Sheriff") {
-                        NSApplication.shared.terminate(nil)
+                        quit()
                     }
                     Spacer()
                 }
             }
         }
         .formStyle(.grouped)
+    }
+
+    private func quit() {
+        dismiss()
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(150))
+            appState.stop()
+            UserDefaults.standard.synchronize()
+            NSApp.terminate(nil)
+            try? await Task.sleep(for: .milliseconds(500))
+            exit(0)
+        }
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {
