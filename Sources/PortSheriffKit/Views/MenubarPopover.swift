@@ -13,28 +13,28 @@ public struct MenubarPopover: View {
 
     public init() {}
 
+    private var unreadCount: Int {
+        appState.alertEngine.events.filter { !$0.isRead }.count
+    }
+
+    private func label(for tab: Tab) -> String {
+        if tab == .alerts && unreadCount > 0 {
+            return "Alerts (\(unreadCount))"
+        }
+        return tab.rawValue
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
             // Top bar
             HStack {
                 Picker("", selection: $selectedTab) {
                     ForEach(Tab.allCases, id: \.self) { tab in
-                        HStack(spacing: 4) {
-                            Text(tab.rawValue)
-                            if tab == .alerts && appState.alertEngine.hasUnreadAlerts {
-                                let unreadCount = appState.alertEngine.events.filter { !$0.isRead }.count
-                                Text(String(unreadCount))
-                                    .font(.caption2)
-                                    .padding(.horizontal, 4)
-                                    .background(.red)
-                                    .foregroundStyle(.white)
-                                    .clipShape(Capsule())
-                            }
-                        }
-                        .tag(tab)
+                        Text(label(for: tab)).tag(tab)
                     }
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
 
                 Button {
                     showSettings.toggle()

@@ -4,6 +4,8 @@ A native macOS menubar app that shows every TCP listening port on your machine, 
 
 ![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-blue) ![Swift](https://img.shields.io/badge/swift-6.0-orange) ![License](https://img.shields.io/badge/license-MIT-green)
 
+![Port Sheriff popover](docs/screenshot.png)
+
 ## Features
 
 - Live list of TCP listening ports with process name, PID, address, and command path
