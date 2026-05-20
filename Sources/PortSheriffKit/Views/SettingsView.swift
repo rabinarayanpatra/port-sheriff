@@ -47,15 +47,9 @@ public struct SettingsView: View {
     }
 
     private func quit() {
-        dismiss()
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(150))
-            appState.stop()
-            UserDefaults.standard.synchronize()
-            NSApp.terminate(nil)
-            try? await Task.sleep(for: .milliseconds(500))
-            exit(0)
-        }
+        appState.stop()
+        UserDefaults.standard.synchronize()
+        exit(0)
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {

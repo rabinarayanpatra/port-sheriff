@@ -42,6 +42,18 @@ public struct MenubarPopover: View {
                     Image(systemName: "gear")
                 }
                 .buttonStyle(.borderless)
+                .help("Settings")
+
+                Button {
+                    appState.stop()
+                    UserDefaults.standard.synchronize()
+                    exit(0)
+                } label: {
+                    Image(systemName: "power")
+                }
+                .buttonStyle(.borderless)
+                .keyboardShortcut("q", modifiers: .command)
+                .help("Quit Port Sheriff (⌘Q)")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
