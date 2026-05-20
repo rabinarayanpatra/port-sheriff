@@ -21,8 +21,4 @@ struct PortSheriffApp: App {
         }
         .menuBarExtraStyle(.window)
     }
-
-    init() {
-        NSApp.setActivationPolicy(.accessory)
-    }
 }

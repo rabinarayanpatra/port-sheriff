@@ -4,6 +4,7 @@ public struct PortListView: View {
     @Environment(AppState.self) private var appState
     @State private var searchText = ""
     @State private var sortOrder: SortOrder = .port
+    @State private var hideSystem = true
 
     enum SortOrder: String, CaseIterable {
         case port = "Port"
@@ -13,13 +14,25 @@ public struct PortListView: View {
 
     public init() {}
 
+    private var allPorts: [PortEntry] {
+        appState.scanner.ports
+    }
+
+    private var systemPortCount: Int {
+        allPorts.filter { ProcessManager.isSystemProcess(pid: $0.pid, name: $0.processName) }.count
+    }
+
     private var filteredPorts: [PortEntry] {
-        var entries = appState.scanner.ports
+        var entries = allPorts
+
+        if hideSystem {
+            entries = entries.filter { !ProcessManager.isSystemProcess(pid: $0.pid, name: $0.processName) }
+        }
 
         if !searchText.isEmpty {
             entries = entries.filter { entry in
-                "\(entry.port)".contains(searchText)
-                || entry.processName.localizedCaseInsensitiveContains(searchText)
+                String(entry.port).contains(searchText)
+                    || entry.processName.localizedCaseInsensitiveContains(searchText)
             }
         }
 
@@ -37,8 +50,8 @@ public struct PortListView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            // Header
-            HStack {
+            // Search row
+            HStack(spacing: 8) {
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
@@ -49,16 +62,31 @@ public struct PortListView: View {
                 .background(.quaternary)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
 
+                Toggle(isOn: $hideSystem) {
+                    Image(systemName: hideSystem ? "lock.fill" : "lock.open")
+                        .help(hideSystem ? "Showing user processes only" : "Showing all processes")
+                }
+                .toggleStyle(.button)
+                .controlSize(.small)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            // Sort row
+            HStack(spacing: 6) {
+                Text("Sort")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Picker("Sort", selection: $sortOrder) {
                     ForEach(SortOrder.allCases, id: \.self) { order in
                         Text(order.rawValue).tag(order)
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 180)
+                .labelsHidden()
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.bottom, 8)
 
             Divider()
 
@@ -82,9 +110,7 @@ public struct PortListView: View {
                 ContentUnavailableView {
                     Label("No Ports", systemImage: "network.slash")
                 } description: {
-                    Text(searchText.isEmpty
-                        ? "No TCP listening ports detected"
-                        : "No ports match your filter")
+                    Text(emptyStateMessage)
                 }
                 .frame(maxHeight: .infinity)
             } else {
@@ -92,7 +118,7 @@ public struct PortListView: View {
                     LazyVStack(spacing: 0) {
                         ForEach(filteredPorts) { entry in
                             PortRowView(entry: entry) { pid, force in
-                                handleKill(pid: pid, force: force, entry: entry)
+                                _ = appState.killProcess(pid: pid, force: force)
                             }
                             .padding(.horizontal, 12)
                             Divider().padding(.leading, 12)
@@ -104,7 +130,7 @@ public struct PortListView: View {
             Divider()
 
             // Footer
-            HStack {
+            HStack(spacing: 8) {
                 if let lastScan = appState.scanner.lastScanTime {
                     Text("Last scan: \(lastScan, format: .relative(presentation: .numeric))")
                         .font(.caption)
@@ -113,6 +139,12 @@ public struct PortListView: View {
                     Text("Scanning...")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+
+                if hideSystem && systemPortCount > 0 {
+                    Text("• \(systemPortCount) system hidden")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
 
                 if let error = appState.scanner.scanError {
@@ -136,11 +168,13 @@ public struct PortListView: View {
         }
     }
 
-    private func handleKill(pid: Int32, force: Bool, entry: PortEntry) {
-        if ProcessManager.isSystemProcess(pid: pid, name: entry.processName) && !force {
-            // System process warning handled by confirmation in PortRowView
-            return
+    private var emptyStateMessage: String {
+        if !searchText.isEmpty {
+            return "No ports match your filter"
         }
-        _ = appState.killProcess(pid: pid, force: force)
+        if hideSystem && systemPortCount > 0 {
+            return "Only system ports listening. Toggle the lock to show them."
+        }
+        return "No TCP listening ports detected"
     }
 }

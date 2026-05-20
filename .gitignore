@@ -4,3 +4,27 @@
 *.xcodeproj
 xcuserdata/
 DerivedData/
+
+# Build outputs
+build/
+*.app
+*.dmg
+*.zip
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.fseventsd
+.Spotlight-V100
+.Trashes
+
+# Code signing artifacts (never commit)
+*.p12
+*.cer
+*.mobileprovision
+notarization-credentials.json

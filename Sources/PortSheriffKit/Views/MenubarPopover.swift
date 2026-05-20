@@ -23,7 +23,7 @@ public struct MenubarPopover: View {
                             Text(tab.rawValue)
                             if tab == .alerts && appState.alertEngine.hasUnreadAlerts {
                                 let unreadCount = appState.alertEngine.events.filter { !$0.isRead }.count
-                                Text("\(unreadCount)")
+                                Text(String(unreadCount))
                                     .font(.caption2)
                                     .padding(.horizontal, 4)
                                     .background(.red)

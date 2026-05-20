@@ -6,6 +6,8 @@ struct PortRowView: View {
 
     @State private var isExpanded = false
     @State private var killState: KillState = .idle
+    @State private var showSystemKillConfirm = false
+    @State private var pendingForce = false
 
     enum KillState {
         case idle
@@ -13,19 +15,31 @@ struct PortRowView: View {
         case waitingForForce
     }
 
+    private var isSystem: Bool {
+        ProcessManager.isSystemProcess(pid: entry.pid, name: entry.processName)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("\(entry.port)")
+                Text(String(entry.port))
                     .font(.system(.body, design: .monospaced))
                     .fontWeight(.semibold)
                     .frame(width: 60, alignment: .leading)
 
-                Text(entry.processName)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    if isSystem {
+                        Image(systemName: "lock.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                            .help("System process — kill with caution")
+                    }
+                    Text(entry.processName)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Text("\(entry.pid)")
+                Text(String(entry.pid))
                     .font(.system(.body, design: .monospaced))
                     .foregroundStyle(.secondary)
                     .frame(width: 60, alignment: .trailing)
@@ -41,6 +55,20 @@ struct PortRowView: View {
             }
         }
         .padding(.vertical, 4)
+        .confirmationDialog(
+            "Kill system process \(entry.processName) (PID \(entry.pid))?",
+            isPresented: $showSystemKillConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Kill anyway", role: .destructive) {
+                performKill(force: pendingForce)
+            }
+            Button("Cancel", role: .cancel) {
+                killState = .idle
+            }
+        } message: {
+            Text("This is a macOS system process. Killing it may destabilize the OS or log you out.")
+        }
     }
 
     @ViewBuilder
@@ -48,19 +76,16 @@ struct PortRowView: View {
         switch killState {
         case .idle:
             Button("Kill") {
-                killState = .terminating
-                onKill(entry.pid, false)
-                Task {
-                    try? await Task.sleep(for: .seconds(3))
-                    if ProcessManager.isAlive(pid: entry.pid) {
-                        killState = .waitingForForce
-                    } else {
-                        killState = .idle
-                    }
+                pendingForce = false
+                if isSystem {
+                    showSystemKillConfirm = true
+                } else {
+                    performKill(force: false)
                 }
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
+            .tint(isSystem ? .orange : nil)
 
         case .terminating:
             ProgressView()
@@ -68,12 +93,29 @@ struct PortRowView: View {
 
         case .waitingForForce:
             Button("Force") {
-                onKill(entry.pid, true)
-                killState = .idle
+                pendingForce = true
+                if isSystem {
+                    showSystemKillConfirm = true
+                } else {
+                    performKill(force: true)
+                }
             }
             .buttonStyle(.borderedProminent)
             .tint(.red)
             .controlSize(.small)
+        }
+    }
+
+    private func performKill(force: Bool) {
+        killState = .terminating
+        onKill(entry.pid, force)
+        Task {
+            try? await Task.sleep(for: .seconds(3))
+            if ProcessManager.isAlive(pid: entry.pid) {
+                killState = .waitingForForce
+            } else {
+                killState = .idle
+            }
         }
     }
 
