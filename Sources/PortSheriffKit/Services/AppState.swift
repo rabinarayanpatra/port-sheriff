@@ -13,6 +13,9 @@ public final class AppState {
         alertEngine.hasUnreadAlerts
     }
 
+    private var diffProcessingTask: Task<Void, Never>?
+    private var isStarted = false
+
     public init() {
         self.scanner = PortScanner()
         self.alertEngine = AlertEngine()
@@ -20,17 +23,17 @@ public final class AppState {
     }
 
     public func start() {
+        guard !isStarted else { return }
+        isStarted = true
         alertEngine.requestNotificationPermission()
-        scanner.startPolling { [weak self] in
-            self?.settings.pollInterval ?? 5.0
-        }
-
-        // Process diffs from scanner
         startDiffProcessing()
     }
 
     public func stop() {
         scanner.stopPolling()
+        diffProcessingTask?.cancel()
+        diffProcessingTask = nil
+        isStarted = false
     }
 
     public func scanNow() {
@@ -55,11 +58,7 @@ public final class AppState {
     }
 
     private func startDiffProcessing() {
-        // Override scanner's scan to feed diffs to alert engine.
-        // We re-start polling with a wrapper that processes diffs.
-        scanner.stopPolling()
-
-        let pollingTask = Task { [weak self] in
+        diffProcessingTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
                 if let diff = await self.scanner.scan(), !diff.isEmpty {
@@ -74,6 +73,5 @@ public final class AppState {
                 try? await Task.sleep(for: .seconds(interval))
             }
         }
-        _ = pollingTask // retained by Task runtime
     }
 }
